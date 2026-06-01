@@ -3,7 +3,7 @@ import { z } from "zod";
 import model from "./models.js";
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PATTERN 3 — REFLECTION
+// PATTERN 3 — REFLECTION  (difficoltà: alta — il più complesso dei tre pattern)
 // L'Esecutore genera una bozza. Il Critico la valuta: approva o rimanda.
 // Il loop si ripete finché approvato o raggiunto maxIterazioni.
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -26,20 +26,23 @@ Altrimenti indica cosa migliorare. Rispondi in italiano.`,
     }),
 });
 
+
 const maxIterazioni = 3;
 
-function patternReflection(prodotto, bozza = "", iterazione = 1) {
-    if (iterazione === 1) console.log("\n=== Pattern 3: Reflection ===");
-
-    if (iterazione > maxIterazioni) {
-        console.log(`\nLimite di ${maxIterazioni} iterazioni raggiunto.`);
-        console.log("Versione finale:\n", bozza);
-        return Promise.resolve();
+// Gestisce un singolo ciclo esecutore→critico e si richiama ricorsivamente se necessario
+// bozza: testo dell'ultima versione; feedback: suggerimenti dell'iterazione precedente
+function eseguiCiclo(prodotto, iterazione = maxIterazioni, bozza = "", feedback = "") {
+    if (iterazione === 0) {
+        console.log(`*** Limite di ${maxIterazioni} iterazioni raggiunto.`);
+        return Promise.resolve(bozza);
     }
 
     const prompt = bozza === ""
         ? `Scrivi una descrizione per questo prodotto: "${prodotto}"`
-        : `Riscrivi e migliora questa descrizione tenendo conto del feedback ricevuto:\n${bozza}`;
+        : `Riscrivi e migliora questa descrizione tenendo conto del feedback ricevuto:
+${bozza}
+
+Feedback: ${feedback}`;
 
     // nuovaBozza è dichiarata qui per essere visibile a entrambi i .then() successivi
     let nuovaBozza;
@@ -47,22 +50,34 @@ function patternReflection(prodotto, bozza = "", iterazione = 1) {
     return esecutore.invoke({ messages: [new HumanMessage(prompt)] })
         .then(risposta => {
             nuovaBozza = risposta.messages.at(-1).content;
-            console.log(`\nIterazione ${iterazione} — Bozza:\n${nuovaBozza}`);
+            const iterazioneCorrente = maxIterazioni - iterazione + 1;
+            console.log(`🚀 Iterazione ${iterazioneCorrente} — Bozza:\n${nuovaBozza}`);
             return critico.invoke({ messages: [new HumanMessage(`Valuta questa descrizione:\n${nuovaBozza}`)] });
         })
         .then(valutazione => {
-            const { approvato, feedback } = valutazione.structuredResponse;
+            const { approvato, feedback: nuovoFeedback } = valutazione.structuredResponse;
 
             if (approvato) {
-                console.log("\nDescrizione approvata!");
-                console.log("Versione finale:\n", nuovaBozza);
-                return Promise.resolve();
+                console.log(`👍️ Descrizione approvata!`);
+                return nuovaBozza;
             }
 
-            console.log(`Feedback del critico: ${feedback}`);
-            // chiamata ricorsiva: passa la bozza aggiornata con il feedback all'iterazione successiva
-            return patternReflection(prodotto, `${nuovaBozza}\n\nFeedback: ${feedback}`, iterazione + 1);
+            console.log(`❌ Feedback del critico: ${nuovoFeedback}`);
+            // chiamata ricorsiva: passa bozza e feedback come argomenti separati
+            return eseguiCiclo(prodotto, iterazione - 1, nuovaBozza, nuovoFeedback);
         });
 }
 
-patternReflection("Scarpe da corsa ultraleggere").catch(err => console.error("Errore reflection:", err));
+function patternReflection(prodotto) {
+    console.log("\n=== Pattern 3: Reflection ===");
+    eseguiCiclo(prodotto, 3)
+        .then((versioneFinale) => {
+            console.log(`Versione finale:\n${versioneFinale}`);
+        })
+        .catch(err => {
+            console.error("Errore reflection:", err)
+        });
+
+}
+
+patternReflection("Scarpe da corsa ultraleggere");
