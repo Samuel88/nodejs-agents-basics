@@ -203,7 +203,7 @@ con il parametro `feedback` della funzione.
 
 **Punto chiave:** il Critico non riscrive, valuta e suggerisce. È l'Esecutore che
 migliora a ogni ciclo. `maxIterazioni` è obbligatorio: senza, la ricorsione non avrebbe
-mai un caso base e il programma andrebbe in loop infinito.
+mai un caso base e il programma potrebbe andare in un loop infinito.
 
 ---
 
